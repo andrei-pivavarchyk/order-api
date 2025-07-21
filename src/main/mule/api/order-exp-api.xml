@@ -6,7 +6,7 @@
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 	<flow name="order-exp-apiFlow" doc:id="fa647b33-9ec2-445e-b515-845a49301c80" >
-		<http:listener doc:name="Listener" doc:id="0a5f4d7f-540b-45a2-9114-9b6345ef588d" config-ref="HTTP_Listener_config" path="/orders"/>
+		<http:listener doc:name="Listener" doc:id="0a5f4d7f-540b-45a2-9114-9b6345ef588d" config-ref="HTTP_Listener_config" path="/orders" allowedMethods="POST"/>
 		<flow-ref doc:name="Flow Reference" doc:id="2620cd9d-5652-42e9-8008-bf940c3ec561" name="create-order-processFlow"/>
 		<ee:transform doc:name="Transform Message" doc:id="d9b2e864-556e-49d1-ade0-afb9baab6501" >
 			<ee:message >
