@@ -1,0 +1,59 @@
+#%RAML 1.0
+title: System Order API
+version: v1
+baseUri: https://api.acme-corp.com/system-order-api/{version}
+mediaType: application/json
+
+types:
+  Account:
+    properties:
+      id: string
+      name: string
+      accountNumber: string
+
+  Order:
+    properties:
+      id?: string
+      accountId: string
+      effectiveDate: date-only
+      endDate: date-only
+
+  OrderItem:
+    properties:
+      id?: string
+      orderId: string
+      productId: string
+      listPrice: number
+      quantity: integer
+
+/accounts:
+  get:
+    description: Search Account by accountNumber
+    queryParameters:
+      accountNumber:
+        type: string
+        required: true
+    responses:
+      200:
+        body:
+          type: Account[]
+
+/orders:
+  post:
+    description: Create Order
+    body:
+      type: Order
+    responses:
+      201:
+        body:
+          type: Order
+
+/order-items:
+  post:
+    description: Create Order Item
+    body:
+      type: OrderItem
+    responses:
+      201:
+        body:
+          type: OrderItem

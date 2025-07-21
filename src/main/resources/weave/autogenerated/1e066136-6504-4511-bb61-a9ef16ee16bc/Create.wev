@@ -1,0 +1,9 @@
+%dw 2.0
+
+type auto_1e066136_6504_4511_bb61_a9ef16ee16bc_Output_Variables_Order_To_Create = {|
+  AccountId: Array<String {"typeId": "Id"}> | Null, 
+  Pricebook2Id: String {"typeAlias": "auto_fd9f36c7-1c01-4859-95c0-fea81724b854_Output-Variables-SF_Price_Book_Id"}, 
+  Status: String, 
+  EffectiveDate: Date {"format": "yyyy-M-d"}
+|}
+

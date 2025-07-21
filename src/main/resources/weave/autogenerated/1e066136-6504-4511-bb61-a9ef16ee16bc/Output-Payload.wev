@@ -1,0 +1,16 @@
+%dw 2.0
+
+type auto_1e066136_6504_4511_bb61_a9ef16ee16bc_Output_Payload = {|
+  result: {|
+    error: String | Null, 
+    errorType: org_mule_runtime_api_message_ErrorType {"typeId": "org.mule.runtime.api.message.ErrorType"} | Null
+  |}
+|}
+type org_mule_runtime_api_message_ErrorType = {|
+  identifier?: String, 
+  namespace?: String, 
+  parentErrorType?: org_mule_runtime_api_message_ErrorType {"typeId": "org.mule.runtime.api.message.ErrorType"}
+|} {"typeId": "org.mule.runtime.api.message.ErrorType"}
+
+
+

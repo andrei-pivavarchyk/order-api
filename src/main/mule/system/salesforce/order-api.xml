@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:salesforce-composite="http://www.mulesoft.org/schema/mule/salesforce-composite"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/salesforce-composite http://www.mulesoft.org/schema/mule/salesforce-composite/current/mule-salesforce-composite.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+	<flow name="order-apiFlow" doc:id="1e066136-6504-4511-bb61-a9ef16ee16bc" >
+		<ee:transform doc:name="Transform Message" doc:id="f6992c48-c4bf-4ced-a50c-3fb538b28af9">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Extract product codes" doc:id="2b19b33a-e95e-42fd-9153-1aeb6f460d0b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[payload.items]" doc:name="Get PriceBookEntry Id" doc:id="581b3e33-c57e-434e-a340-1e5fae05d75b" variableName="Items_JSON"/>
+		<set-variable value="#[payload.accountNumber]" doc:name="Get Account Number" doc:id="d1c4b05c-0479-404b-943e-a9bf5a0ffc95" variableName="accountNumber"/>
+		<set-variable value="#[payload.orderDate]" doc:name="Set Start Date" doc:id="a3b01087-76f9-45bc-947c-b0dcf6145100" variableName="Order_Start_Date"/>
+		<flow-ref doc:name="Flow Reference" doc:id="6f434f7f-e258-420f-afc0-138ffad091ab" name="account-find-by-number"/>
+		<set-variable value="#[payload.Id]" doc:name="Set SF Account Id" doc:id="639101da-aceb-47aa-8f32-b4fb12132450" variableName="SF_Account_Id" />
+		<logger level="INFO" doc:name="Logger1" doc:id="094466fd-70d6-4c30-896f-5ad8cd190525" message="Found Account: #[payload]" />
+		<flow-ref doc:name="Flow Reference" doc:id="3d976b0d-df51-40d7-aad5-52777a18df21" name="pricebook-flowsFlow"/>
+		<set-variable value="#[payload]" doc:name="Set Price Book" doc:id="afe1fd13-9859-4d73-b82b-af4591a792ed" variableName="SF_Price_Book_Id"/>
+		<logger level="INFO" doc:name="Logger" doc:id="43a17d05-80f0-4d7a-bcaa-73d3a94fd227" message="Found Price Book: #[payload]" />
+		<flow-ref doc:name="Generate Order Items" doc:id="e9a18dcd-dc9e-4803-87d8-50b25d5cbebb" name="pricebookentry-find-by-codesFlow"/>
+		<set-variable value="#[payload]" doc:name="Set ProductCode to EntryId" doc:id="29e66a6c-a34e-4fae-b7b0-30b4f9608909" variableName="ProductCodeToEntryId" />
+		<ee:transform doc:name="Transform Message" doc:id="8f80acf4-390c-4121-a05a-05cacf4cff48" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+  AccountId: vars.SF_Account_Id,
+  Pricebook2Id: vars.SF_Price_Book_Id,
+  Status: "Draft",
+   EffectiveDate:  "2025-08-19" as Date {format: "yyyy-M-d"}
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[payload]" doc:name="Set Order To Create" doc:id="502f10af-5027-4788-af37-967968799505" variableName="Order_To_Create"/>
+		<logger level="INFO" doc:name="Logger" doc:id="528d80d1-10e7-47e6-bf8f-6344dd0fcd3c" message="#[vars.Order_To_Create]"/>
+		<try doc:name="Try" doc:id="4245a028-38e4-4575-8314-9381687cfe05" >
+			<salesforce:create doc:name="Create" doc:id="46ad76f4-e9eb-4f9b-862f-4c22394b0493" config-ref="Salesforce_Config" type="Order">
+				<salesforce:records ><![CDATA[#[[payload]]]]></salesforce:records>
+		</salesforce:create>
+			<ee:transform doc:name="Transform Message" doc:id="2ad34d91-f73d-4ca3-84e3-7e96fb4d4d3d" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload.items[0].payload.id
+]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<logger level="INFO" doc:name="Logger" doc:id="8733ecf0-0c49-4733-b2af-c5ded65edd0a" message="Payload order creation: #[payload]"/>
+			<set-variable value="#[payload]" doc:name="Set Variable" doc:id="5a70e0aa-6036-4e9b-8c3e-5fcac2f918eb" variableName="OrderId"/>
+			<ee:transform doc:name="Transform Message" doc:id="abb8eb86-3b76-4ae3-a505-60730331ca03" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+vars.Items_JSON map (item) -> {
+  OrderId: vars.OrderId,
+ Quantity: item.quantity,
+  UnitPrice: item.unitPrice,
+  PricebookEntryId: vars.ProductCodeToEntryId[item.productCode]
+}
+]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<logger level="INFO" doc:name="Logger" doc:id="9d548389-9e3e-4604-812c-00cd065a8fe0" message="Result: #[payload]" />
+			<salesforce:create type="OrderItem" doc:name="Create" doc:id="553ce15e-1257-40b2-a9fb-7e3592a4cf8c" config-ref="Salesforce_Config"/>
+		<error-handler>
+    <on-error-propagate enableNotifications="true" logException="true" doc:name="Salesforce Error">
+        <set-payload value="#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;  error: error.description,&#10;  errorType: error.errorType&#10;}]" doc:name="Set Payload" doc:id="ebc58298-5d8c-40ea-bcea-2e5bc57a8d4e" />
+					<logger level="ERROR" doc:name="Log Salesforce Error" message="Salesforce error: #[error.description]"/>
+    </on-error-propagate>
+</error-handler>
+		
+		</try>
+		<ee:transform doc:name="Transform Message" doc:id="f721aaf6-4091-4061-917e-82fbd236b250">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{ result: payload }
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

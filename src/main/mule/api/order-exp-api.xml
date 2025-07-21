@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="order-exp-apiFlow" doc:id="fa647b33-9ec2-445e-b515-845a49301c80" >
+		<http:listener doc:name="Listener" doc:id="0a5f4d7f-540b-45a2-9114-9b6345ef588d" config-ref="HTTP_Listener_config" path="/orders"/>
+		<flow-ref doc:name="Flow Reference" doc:id="2620cd9d-5652-42e9-8008-bf940c3ec561" name="create-order-processFlow"/>
+		<ee:transform doc:name="Transform Message" doc:id="d9b2e864-556e-49d1-ade0-afb9baab6501" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{ result: payload }
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

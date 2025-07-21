@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_fd9f36c7_1c01_4859_95c0_fea81724b854_Output_Variables_SF_Account_Id = Array<String {"typeId": "Id"}> | Null
+

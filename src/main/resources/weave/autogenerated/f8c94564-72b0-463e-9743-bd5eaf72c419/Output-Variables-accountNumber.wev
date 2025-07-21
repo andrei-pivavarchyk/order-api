@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_f8c94564_72b0_463e_9743_bd5eaf72c419_Output_Variables_accountNumber = String | Null
+
