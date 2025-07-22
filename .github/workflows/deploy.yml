@@ -1,11 +1,11 @@
-name: Deploy to CloudHub
+name: Deploy to CloudHub 2.0
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -15,14 +15,28 @@ jobs:
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          java-version: '8'
 
-      - name: Build with Maven
-        run: mvn clean package -DskipTests
+      - name: Build project
+        run: mvn clean package
 
-      - name: Deploy to CloudHub
-        run: mvn deploy -DmuleDeploy
-        env:
-          ANYPOINT_USERNAME: ${{ secrets.ANYPOINT_USERNAME }}
-          ANYPOINT_PASSWORD: ${{ secrets.ANYPOINT_PASSWORD }}
+      - name: Install Anypoint CLI v4
+        run: npm install -g anypoint-cli-v4
+
+      - name: Authenticate to Anypoint
+        run: |
+          echo '{}' > config.json
+          anypoint-cli-v4 auth:login \
+            --client-id "${{ secrets.ANYPOINT_CLIENT_ID }}" \
+            --client-secret "${{ secrets.ANYPOINT_CLIENT_SECRET }}" \
+            --json > token.json
+
+      - name: Deploy to CloudHub 2.0
+        run: |
+            anypoint-cli-v4 runtime-mgr cloudhub2:deploy \
+              --org "${{ secrets.ANYPOINT_ORG }}" \
+              --env "${{ secrets.ANYPOINT_ENV }}" \
+              --target "Shared Space US East (Ohio)" \
+              --app-name "system-order-api" \
+              --file target/system-order-api-1.0.0-SNAPSHOT-mule-application.jar
+
