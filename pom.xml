@@ -39,7 +39,6 @@
                         <environment>Sandbox</environment>
                         <region>us-east-1</region>
                         <workerType>MICRO</workerType>
-                        <workerAmount>1</workerAmount>
                     </cloudHubDeployment>
                 </configuration>
             </plugin>
