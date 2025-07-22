@@ -33,10 +33,9 @@ jobs:
 
       - name: Deploy to CloudHub 2.0
         run: |
-            anypoint-cli-v4 runtime-mgr cloudhub2:deploy \
-              --org "${{ secrets.ANYPOINT_ORG }}" \
-              --env "${{ secrets.ANYPOINT_ENV }}" \
-              --target "Shared Space US East (Ohio)" \
-              --app-name "system-order-api" \
-              --file target/system-order-api-1.0.0-SNAPSHOT-mule-application.jar
-
+          anypoint-cli-v4 runtime-mgr cloudhub2:deploy \
+            --org "${{ secrets.ANYPOINT_ORG }}" \
+            --env "${{ secrets.ANYPOINT_ENV }}" \
+            --target "Shared Space US East (Ohio)" \
+            --app-name "system-order-api" \ 
+            --file target/system-order-api-1.0.0-SNAPSHOT-mule-application.jar
