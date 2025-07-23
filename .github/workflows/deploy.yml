@@ -1,4 +1,4 @@
-name: Build and Deploy to CloudHub 2.0
+name: Build and Deploy to CloudHub 2.0 via CLI
 
 on:
   push:
@@ -6,19 +6,17 @@ on:
       - master
 
 env:
-  ORG_ID: dd5302b1-b873-4250-b3ba-cff448dafdab
-  ENV_ID: 869d18a5-39b8-4d21-8886-f2b8abea82c3
-  DEPLOYMENT_TARGET_ID: 7e1948b7-68a0-4a5d-a561-95d620c41f7e
   APP_NAME: order-api
-  VERSION: v1.0.0
-  ARTIFACT_NAME: System-order-api-1.0.0-SNAPSHOT-mule-application.jar
+  TARGET: cloudhub-us-east-2
+  ENVIRONMENT: Sandbox
+  ORG_NAME: Hellsing
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Set up Java and Maven
@@ -28,46 +26,29 @@ jobs:
           java-version: '17'
 
       - name: Build Mule application
-        run: |
-          mvn clean package -DskipTests
-          echo "✅ JAR built:"
-          ls -lh target/*.jar
+        run: mvn clean package -DskipTests
 
-      - name: Upload JAR as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: mule-jar
-          path: target/*.jar
+      - name: Install Anypoint CLI
+        run: npm install -g anypoint-cli-v4
 
-      - name: Get OAuth token
-        id: auth
+      - name: Login to Anypoint CLI
         run: |
-          TOKEN=$(curl -s -X POST https://anypoint.mulesoft.com/accounts/api/v2/oauth2/token \
-            -H "Content-Type: application/x-www-form-urlencoded" \
-            -d "grant_type=client_credentials&client_id=${{ secrets.ANYPOINT_CLIENT_ID }}&client_secret=${{ secrets.ANYPOINT_CLIENT_SECRET }}" | jq -r .access_token)
-          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+          anypoint-cli-v4 config set username $ANYPOINT_USERNAME
+          anypoint-cli-v4 config set password $ANYPOINT_PASSWORD
+          anypoint-cli-v4 config set environment "${ENVIRONMENT}"
+          anypoint-cli-v4 config set organization "${ORG_NAME}"
+          anypoint-cli-v4 login
+        env:
+          ANYPOINT_USERNAME: ${{ secrets.ANYPOINT_USERNAME }}
+          ANYPOINT_PASSWORD: ${{ secrets.ANYPOINT_PASSWORD }}
 
       - name: Deploy to CloudHub 2.0
         run: |
-          ARTIFACT_URL="https://github.com/${{ github.repository }}/releases/download/${VERSION}/${ARTIFACT_NAME}"
-
-          echo "🚀 Deploying from:"
-          echo "$ARTIFACT_URL"
-
-          curl -X POST https://anypoint.mulesoft.com/runtimefabric/api/organizations/${ORG_ID}/environments/${ENV_ID}/deployments \
-            -H "Authorization: Bearer ${{ steps.auth.outputs.token }}" \
-            -H "Content-Type: application/json" \
-            -d "$(jq -n \
-              --arg name "${APP_NAME}" \
-              --arg targetId "${DEPLOYMENT_TARGET_ID}" \
-              --arg uri "$ARTIFACT_URL" \
-              '{
-                targetId: $targetId,
-                name: $name,
-                artifact: {
-                  type: "mule",
-                  uri: $uri
-                },
-                replicas: 1,
-                desiredState: "STARTED"
-              }')"
+          JAR_FILE=$(ls target/*.jar | head -n1)
+          echo "Deploying: $JAR_FILE"
+          anypoint-cli-v4 runtime-mgr cloudhub2 deploy \
+            --target "${TARGET}" \
+            --environment "${ENVIRONMENT}" \
+            --organization "${ORG_NAME}" \
+            --name "${APP_NAME}" \
+            --file "$JAR_FILE" --overwrite
