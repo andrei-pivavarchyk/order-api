@@ -34,7 +34,7 @@ jobs:
           ls -lh target/*.jar
 
       - name: Upload JAR as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mule-jar
           path: target/*.jar
