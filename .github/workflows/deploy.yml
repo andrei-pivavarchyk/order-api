@@ -1,4 +1,4 @@
-name: Deploy to CloudHub 2.0 via CLI
+name: Deploy to CloudHub 2.0 (via API)
 
 on:
   push:
@@ -7,38 +7,55 @@ on:
 
 jobs:
   deploy:
+    name: Build and Deploy to CloudHub 2.0
     runs-on: ubuntu-latest
 
+    env:
+      ORG_ID: dd5302b1-b873-4250-b3ba-cff448dafdab
+      ENV_ID: 869d18a5-39b8-4d21-8886-f2b8abea82c3
+      DEPLOYMENT_TARGET_ID: 7e1948b7-68a0-4a5d-a561-95d620c41f7e
+      APP_NAME: order-api
+      REGION: us-east-2
+
     steps:
-      - name: Checkout repository
+      - name: Checkout source code
         uses: actions/checkout@v3
 
-      - name: Set up Java
+      - name: Set up Java and Maven
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install Anypoint CLI and CloudHub2 Plugin
-        run: |
-          npm install -g anypoint-cli-v4
-          anypoint-cli-v4 plugins:install @mulesoft/cloudhub2
-
-
-      - name: Build JAR
+      - name: Build Mule application
         run: mvn clean package -DskipTests
 
-      - name: Login to Anypoint
+      - name: Get OAuth token
+        id: auth
         run: |
-          anypoint-cli-v4 config set username $ANYPOINT_USERNAME
-          anypoint-cli-v4 config set password $ANYPOINT_PASSWORD
-          anypoint-cli-v4 config set organization "dd5302b1-b873-4250-b3ba-cff448dafdab"
-          anypoint-cli-v4 config set environment "Sandbox"
-          anypoint-cli-v4 login
+          TOKEN=$(curl -s -X POST https://anypoint.mulesoft.com/accounts/api/v2/oauth2/token \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=client_credentials&client_id=${{ secrets.ANYPOINT_CLIENT_ID }}&client_secret=${{ secrets.ANYPOINT_CLIENT_SECRET }}" | jq -r .access_token)
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
 
-      - name: Deploy to CloudHub 2.0
+      - name: Upload .jar to GitHub as release asset (optional)
         run: |
-          anypoint-cli-v4 runtime-mgr cloudhub2 deploy \
-            --target cloudhub-us-east-2 \
-            --name order-api \
-            --file target/order-api.jar
+          mkdir -p uploads
+          cp target/*.jar uploads/app.jar
+
+      - name: Deploy to CloudHub 2.0 via API
+        run: |
+          curl -X POST https://anypoint.mulesoft.com/runtimefabric/api/organizations/${ORG_ID}/environments/${ENV_ID}/deployments \
+          -H "Authorization: Bearer ${{ steps.auth.outputs.token }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "targetId": "'${DEPLOYMENT_TARGET_ID}'",
+            "name": "'${APP_NAME}'",
+            "artifact": {
+              "type": "mule",
+              "content": "'$(base64 -w 0 uploads/app.jar)'"
+            },
+            "replicas": 1,
+            "lastUpdate": null,
+            "desiredState": "STARTED"
+          }'
