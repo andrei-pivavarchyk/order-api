@@ -1,9 +1,9 @@
-name: Build & Deploy to CloudHub 2.0
+name: Build and Deploy to CloudHub 2.0
 
 on:
   push:
     branches:
-      - main
+      - master
 
 env:
   ORG_ID: dd5302b1-b873-4250-b3ba-cff448dafdab
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Set up Java and Maven
@@ -37,7 +37,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload JAR to Release
+      - name: Upload .jar to Release
         uses: softprops/action-gh-release@v1
         with:
           files: target/*.jar
@@ -55,16 +55,23 @@ jobs:
 
       - name: Deploy to CloudHub 2.0
         run: |
+          ARTIFACT_NAME=$(ls target/*.jar | xargs -n1 basename)
+          ARTIFACT_URL="https://github.com/${{ github.repository }}/releases/download/${VERSION}/${ARTIFACT_NAME}"
+
           curl -X POST https://anypoint.mulesoft.com/runtimefabric/api/organizations/${ORG_ID}/environments/${ENV_ID}/deployments \
-          -H "Authorization: Bearer ${{ steps.auth.outputs.token }}" \
-          -H "Content-Type: application/json" \
-          -d '{
-            "targetId": "'${DEPLOYMENT_TARGET_ID}'",
-            "name": "'${APP_NAME}'",
-            "artifact": {
-              "type": "mule",
-              "uri": "https://github.com/'${{ github.repository }}'/releases/download/'${{ env.VERSION }}'/order-api-1.0.0.jar"
-            },
-            "replicas": 1,
-            "desiredState": "STAR TED"
-          }'
+            -H "Authorization: Bearer ${{ steps.auth.outputs.token }}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg name "${APP_NAME}" \
+              --arg targetId "${DEPLOYMENT_TARGET_ID}" \
+              --arg uri "$ARTIFACT_URL" \
+              '{
+                targetId: $targetId,
+                name: $name,
+                artifact: {
+                  type: "mule",
+                  uri: $uri
+                },
+                replicas: 1,
+                desiredState: "STARTED"
+              }')"
