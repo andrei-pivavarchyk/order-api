@@ -1,4 +1,4 @@
-name: Build and Deploy to CloudHub 2.0
+name: Build Mule App and Export JAR
 
 on:
   push:
@@ -13,7 +13,8 @@ env:
   VERSION: v1.0.0
 
 jobs:
-  deploy:
+  build:
+    name: Build JAR and Export Artifact
     runs-on: ubuntu-latest
 
     steps:
@@ -27,51 +28,13 @@ jobs:
           java-version: '17'
 
       - name: Build Mule application
-        run: mvn clean package -DskipTests
-
-      - name: Create GitHub Release (if not exists)
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ env.VERSION }}
-          name: Release ${{ env.VERSION }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload .jar to Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: target/*.jar
-          tag_name: ${{ env.VERSION }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Get OAuth token
-        id: auth
         run: |
-          TOKEN=$(curl -s -X POST https://anypoint.mulesoft.com/accounts/api/v2/oauth2/token \
-            -H "Content-Type: application/x-www-form-urlencoded" \
-            -d "grant_type=client_credentials&client_id=${{ secrets.ANYPOINT_CLIENT_ID }}&client_secret=${{ secrets.ANYPOINT_CLIENT_SECRET }}" | jq -r .access_token)
-          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+          mvn clean package -DskipTests
+          echo "✅ JAR built:"
+          ls -lh target/*.jar
 
-      - name: Deploy to CloudHub 2.0
-        run: |
-          ARTIFACT_NAME=$(ls target/*.jar | xargs -n1 basename)
-          ARTIFACT_URL="https://github.com/${{ github.repository }}/releases/download/${VERSION}/${ARTIFACT_NAME}"
-
-          curl -X POST https://anypoint.mulesoft.com/runtimefabric/api/organizations/${ORG_ID}/environments/${ENV_ID}/deployments \
-            -H "Authorization: Bearer ${{ steps.auth.outputs.token }}" \
-            -H "Content-Type: application/json" \
-            -d "$(jq -n \
-              --arg name "${APP_NAME}" \
-              --arg targetId "${DEPLOYMENT_TARGET_ID}" \
-              --arg uri "$ARTIFACT_URL" \
-              '{
-                targetId: $targetId,
-                name: $name,
-                artifact: {
-                  type: "mule",
-                  uri: $uri
-                },
-                replicas: 1,
-                desiredState: "STARTED"
-              }')"
+      - name: Upload JAR as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: mule-jar
+          path: target/*.jar
