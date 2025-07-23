@@ -1,4 +1,4 @@
-name: Build Mule App and Export JAR
+name: Build and Deploy to CloudHub 2.0
 
 on:
   push:
@@ -11,10 +11,10 @@ env:
   DEPLOYMENT_TARGET_ID: 7e1948b7-68a0-4a5d-a561-95d620c41f7e
   APP_NAME: order-api
   VERSION: v1.0.0
+  ARTIFACT_NAME: System-order-api-1.0.0-SNAPSHOT-mule-application.jar
 
 jobs:
-  build:
-    name: Build JAR and Export Artifact
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -38,3 +38,36 @@ jobs:
         with:
           name: mule-jar
           path: target/*.jar
+
+      - name: Get OAuth token
+        id: auth
+        run: |
+          TOKEN=$(curl -s -X POST https://anypoint.mulesoft.com/accounts/api/v2/oauth2/token \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=client_credentials&client_id=${{ secrets.ANYPOINT_CLIENT_ID }}&client_secret=${{ secrets.ANYPOINT_CLIENT_SECRET }}" | jq -r .access_token)
+          echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Deploy to CloudHub 2.0
+        run: |
+          ARTIFACT_URL="https://github.com/${{ github.repository }}/releases/download/${VERSION}/${ARTIFACT_NAME}"
+
+          echo "🚀 Deploying from:"
+          echo "$ARTIFACT_URL"
+
+          curl -X POST https://anypoint.mulesoft.com/runtimefabric/api/organizations/${ORG_ID}/environments/${ENV_ID}/deployments \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.token }}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg name "${APP_NAME}" \
+              --arg targetId "${DEPLOYMENT_TARGET_ID}" \
+              --arg uri "$ARTIFACT_URL" \
+              '{
+                targetId: $targetId,
+                name: $name,
+                artifact: {
+                  type: "mule",
+                  uri: $uri
+                },
+                replicas: 1,
+                desiredState: "STARTED"
+              }')"
