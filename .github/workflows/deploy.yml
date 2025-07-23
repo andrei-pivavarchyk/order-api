@@ -66,5 +66,5 @@ jobs:
               "uri": "https://github.com/'${{ github.repository }}'/releases/download/'${{ env.VERSION }}'/order-api-1.0.0.jar"
             },
             "replicas": 1,
-            "desiredState": "STARTED"
+            "desiredState": "STAR TED"
           }'
