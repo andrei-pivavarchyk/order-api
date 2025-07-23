@@ -19,8 +19,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install Anypoint CLI
-        run: npm install -g anypoint-cli-v4
+      - name: Install Anypoint CLI and CloudHub2 Plugin
+        run: |
+          npm install -g anypoint-cli-v4
+          anypoint-cli-v4 plugins:install @mulesoft/cloudhub2
+
 
       - name: Build JAR
         run: mvn clean package -DskipTests
