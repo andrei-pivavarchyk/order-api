@@ -3,7 +3,7 @@ name: Build Mule App and Export JAR
 on:
   push:
     branches:
-      - main
+      - master
 
 env:
   ORG_ID: dd5302b1-b873-4250-b3ba-cff448dafdab
