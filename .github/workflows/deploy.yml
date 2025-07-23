@@ -25,7 +25,6 @@ jobs:
 
       - name: Authenticate to Anypoint
         run: |
-          echo '{}' > config.json
           anypoint-cli-v4 auth:login \
             --client-id "${{ secrets.ANYPOINT_CLIENT_ID }}" \
             --client-secret "${{ secrets.ANYPOINT_CLIENT_SECRET }}" \
@@ -37,5 +36,5 @@ jobs:
             --org "${{ secrets.ANYPOINT_ORG }}" \
             --env "${{ secrets.ANYPOINT_ENV }}" \
             --target "Shared Space US East (Ohio)" \
-            --app-name "system-order-api" \ 
+            --app-name "system-order-api" \
             --file target/system-order-api-1.0.0-SNAPSHOT-mule-application.jar
