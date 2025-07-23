@@ -1,24 +1,23 @@
-name: Deploy to CloudHub 2.0 (via API)
+name: Build & Deploy to CloudHub 2.0
 
 on:
   push:
     branches:
-      - master
+      - main
+
+env:
+  ORG_ID: dd5302b1-b873-4250-b3ba-cff448dafdab
+  ENV_ID: 869d18a5-39b8-4d21-8886-f2b8abea82c3
+  DEPLOYMENT_TARGET_ID: 7e1948b7-68a0-4a5d-a561-95d620c41f7e
+  APP_NAME: order-api
+  VERSION: v1.0.0
 
 jobs:
   deploy:
-    name: Build and Deploy to CloudHub 2.0
     runs-on: ubuntu-latest
 
-    env:
-      ORG_ID: dd5302b1-b873-4250-b3ba-cff448dafdab
-      ENV_ID: 869d18a5-39b8-4d21-8886-f2b8abea82c3
-      DEPLOYMENT_TARGET_ID: 7e1948b7-68a0-4a5d-a561-95d620c41f7e
-      APP_NAME: order-api
-      REGION: us-east-2
-
     steps:
-      - name: Checkout source code
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Set up Java and Maven
@@ -30,6 +29,22 @@ jobs:
       - name: Build Mule application
         run: mvn clean package -DskipTests
 
+      - name: Create GitHub Release (if not exists)
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: Release ${{ env.VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload JAR to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: target/*.jar
+          tag_name: ${{ env.VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Get OAuth token
         id: auth
         run: |
@@ -38,12 +53,7 @@ jobs:
             -d "grant_type=client_credentials&client_id=${{ secrets.ANYPOINT_CLIENT_ID }}&client_secret=${{ secrets.ANYPOINT_CLIENT_SECRET }}" | jq -r .access_token)
           echo "token=$TOKEN" >> $GITHUB_OUTPUT
 
-      - name: Upload .jar to GitHub as release asset (optional)
-        run: |
-          mkdir -p uploads
-          cp target/*.jar uploads/app.jar
-
-      - name: Deploy to CloudHub 2.0 via API
+      - name: Deploy to CloudHub 2.0
         run: |
           curl -X POST https://anypoint.mulesoft.com/runtimefabric/api/organizations/${ORG_ID}/environments/${ENV_ID}/deployments \
           -H "Authorization: Bearer ${{ steps.auth.outputs.token }}" \
@@ -53,9 +63,8 @@ jobs:
             "name": "'${APP_NAME}'",
             "artifact": {
               "type": "mule",
-              "content": "'$(base64 -w 0 uploads/app.jar)'"
+              "uri": "https://github.com/'${{ github.repository }}'/releases/download/'${{ env.VERSION }}'/order-api-1.0.0.jar"
             },
             "replicas": 1,
-            "lastUpdate": null,
             "desiredState": "STARTED"
           }'
